@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 웹 항공 시뮬레이터</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            font-family: monospace;
+            font-size: 16px;
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.7);
+            pointer-events: none;
+        }
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff3333;
+            font-size: 40px;
+            font-weight: bold;
+            text-align: center;
+            background: rgba(0,0,0,0.85);
+            padding: 30px 50px;
+            border-radius: 15px;
+            border: 2px solid #ff3333;
+        }
+        #game-over button {
+            margin-top: 20px;
+            padding: 10px 25px;
+            font-size: 18px;
+            background: #ff3333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <div id="ui-overlay">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>RINGS PASSED: <span id="rings">0</span></div>
+    </div>
+
+    <div id="controls-info">
+        <strong>🎮 조작 방법:</strong><br>
+        • <b>방향키 위/아래 (↑ / ↓)</b> : 피치 (수직 상승/하강 - 조종간 당기기/밀기)<br>
+        • <b>방향키 좌/우 (← / →)</b> : 롤 (좌/우 회전)<br>
+        • <b>Shift / Ctrl</b> : 가속 (Throttle Up) / 감속 (Throttle Down)<br>
+        • <b>목표</b> : 공중에 떠 있는 노란색 링을 통과하세요!
+    </div>
+
+    <div id="game-over">
+        CRASHED!<br>비행기가 추락했습니다!
+        <br>
+        <button onclick="resetGame()">다시 시작</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 게임 상태 변수
+        let isGameOver = false;
+        let score = 0;
+        let ringsPassed = 0;
+
+        // 비행기 물리학 상태
+        const plane = {
+            x: 0,
+            y: 100,  // 고도
+            z: 0,
+            pitch: 0, // 상하 기울기 (라디안)
+            roll: 0,  // 좌우 기울기 (라디안)
+            yaw: 0,   // 수평 회전 (라디안)
+            speed: 40,
+            minSpeed: 10,
+            maxSpeed: 100,
+            throttle: 40
+        };
+
+        // 키 입력 처리
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            initAudio(); // 첫 키 입력 시 오디오 활성화
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // 오디오 엔진 (Web Audio API)
+        let audioCtx, oscillator, gainNode;
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(60, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+        }
+
+        function updateAudio() {
+            if (oscillator && audioCtx) {
+                const pitchFreq = 40 + (plane.speed * 1.5);
+                oscillator.frequency.setTargetAtTime(pitchFreq, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        // 3D 링 목표 생성
+        const rings = [];
+        function createRing(zPos) {
+            rings.push({
+                x: (Math.random() - 0.5) * 600,
+                y: 50 + Math.random() * 150,
+                z: zPos,
+                radius: 30,
+                passed: false
+            });
+        }
+
+        for (let i = 1; i <= 8; i++) {
+            createRing(i * 400);
+        }
+
+        // 비행 및 위치 업데이트
+        function update() {
+            if (isGameOver) return;
+
+            // 가속도 제어
+            if (keys['ShiftLeft'] || keys['ShiftRight']) plane.throttle = Math.min(plane.maxSpeed, plane.throttle + 0.5);
+            if (keys['ControlLeft'] || keys['ControlRight']) plane.throttle = Math.max(plane.minSpeed, plane.throttle - 0.5);
+
+            // 속도 감쇄 및 추력 적용
+            plane.speed += (plane.throttle - plane.speed) * 0.05;
+
+            // 조종 입력 (피치 & 롤)
+            const turnRate = 0.03;
+            if (keys['ArrowUp'] || keys['KeyW']) plane.pitch -= turnRate;   // 피치 다운
+            if (keys['ArrowDown'] || keys['KeyS']) plane.pitch += turnRate; // 피치 업
+            if (keys['ArrowLeft'] || keys['KeyA']) plane.roll -= turnRate;  // 롤 좌측
+            if (keys['ArrowRight'] || keys['KeyD']) plane.roll += turnRate; // 롤 우측
+
+            // 복원력 (키를 떼면 살짝 평형으로 복귀)
+            plane.pitch *= 0.96;
+            plane.roll *= 0.95;
+
+            // 롤 각도에 따른 요(Yaw) 회전 발생
+            plane.yaw += plane.roll * 0.02;
+
+            // 3D 이동 벡터 계산
+            const cosP = Math.cos(plane.pitch);
+            const sinP = Math.sin(plane.pitch);
+            const cosY = Math.cos(plane.yaw);
+            const sinY = Math.sin(plane.yaw);
+
+            plane.x += sinY * cosP * plane.speed * 0.1;
+            plane.y += sinP * plane.speed * 0.1;
+            plane.z += cosY * cosP * plane.speed * 0.1;
+
+            // 중력 및 추락 검사
+            if (plane.speed < 20) plane.y -= 0.5; // 실속(Stall) 시 낙하
+            if (plane.y <= 0) {
+                plane.y = 0;
+                isGameOver = true;
+                document.getElementById('game-over').style.display = 'block';
+            }
+
+            // 링 충돌 및 스폰 검사
+            rings.forEach(ring => {
+                const dx = plane.x - ring.x;
+                const dy = plane.y - ring.y;
+                const dz = plane.z - ring.z;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                if (!ring.passed && dist < ring.radius + 10) {
+                    ring.passed = true;
+                    score += 100;
+                    ringsPassed++;
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('rings').innerText = ringsPassed;
+                }
+            });
+
+            // 지난 링 재생성
+            const maxZ = Math.max(...rings.map(r => r.z));
+            rings.forEach(ring => {
+                if (plane.z - ring.z > 200) {
+                    ring.x = plane.x + (Math.random() - 0.5) * 600;
+                    ring.y = Math.max(30, plane.y + (Math.random() - 0.5) * 100);
+                    ring.z = maxZ + 300 + Math.random() * 100;
+                    ring.passed = false;
+                }
+            });
+
+            updateAudio();
+        }
+
+        // 3D 좌표 변환 (카메라 뷰 연산)
+        function project(x, y, z) {
+            // 카메라 기준 상대 위치
+            let dx = x - plane.x;
+            let dy = y - plane.y;
+            let dz = z - plane.z;
+
+            // Yaw 회전
+            const cosY = Math.cos(-plane.yaw);
+            const sinY = Math.sin(-plane.yaw);
+            let rx = dx * cosY - dz * sinY;
+            let rz = dx * sinY + dz * cosY;
+
+            // Pitch 회전
+            const cosP = Math.cos(-plane.pitch);
+            const sinP = Math.sin(-plane.pitch);
+            let ry = dy * cosP - rz * sinP;
+            rz = dy * sinP + rz * cosP;
+
+            // 원근 투영 (Perspective Projection)
+            const fov = 400;
+            if (rz <= 5) return null; // 카메라 뒤에 있는 물체는 안 그림
+
+            const scale = fov / rz;
+            const screenX = canvas.width / 2 + rx * scale;
+            const screenY = canvas.height / 2 - ry * scale;
+
+            return { x: screenX, y: screenY, scale: scale, depth: rz };
+        }
+
+        // 렌더링 (그래픽 그리기)
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // 1. 하늘과 땅 (인공 수평선 연산)
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-plane.roll);
+            ctx.translate(0, plane.pitch * 300);
+
+            // 하늘
+            ctx.fillStyle = '#1e3c72';
+            ctx.fillRect(-canvas.width * 2, -canvas.height * 2, canvas.width * 4, canvas.height * 2);
+
+            // 격자 패턴 땅
+            ctx.fillStyle = '#1b2a47';
+            ctx.fillRect(-canvas.width * 2, 0, canvas.width * 4, canvas.height * 2);
+
+            // 수평선 선
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-canvas.width * 2, 0);
+            ctx.lineTo(canvas.width * 2, 0);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // 2. 3D 링 목표물 그리기
+            rings.sort((a, b) => b.z - a.z); // 뒤에 있는 링부터 렌더링
+            rings.forEach(ring => {
+                const p = project(ring.x, ring.y, ring.z);
+                if (p) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, ring.radius * p.scale, 0, Math.PI * 2);
+                    ctx.lineWidth = Math.max(2, 5 * p.scale);
+                    ctx.strokeStyle = ring.passed ? '#00ff00' : '#ffcc00';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = ring.passed ? '#00ff00' : '#ffcc00';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+
+            // 3. HUD (계기판 & 십자선)
+            drawHUD();
+        }
+
+        // 계기판 및 UI 그리기
+        function drawHUD() {
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            ctx.save();
+
+            // 조준점 (Crosshair)
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+            ctx.moveTo(cx - 25, cy); ctx.lineTo(cx - 10, cy);
+            ctx.moveTo(cx + 10, cy); ctx.lineTo(cx + 25, cy);
+            ctx.moveTo(cx, cy - 25); ctx.lineTo(cx, cy - 10);
+            ctx.moveTo(cx, cy + 10); ctx.lineTo(cx, cy + 25);
+            ctx.stroke();
+
+            // 속도계 (좌측 바)
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.2)';
+            ctx.fillRect(40, cy - 100, 20, 200);
+            ctx.fillStyle = '#00ffcc';
+            const speedHeight = (plane.speed / plane.maxSpeed) * 200;
+            ctx.fillRect(40, cy + 100 - speedHeight, 20, speedHeight);
+            ctx.fillText(`SPD: ${Math.round(plane.speed)}`, 40, cy + 120);
+
+            // 고도계 (우측 바)
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.2)';
+            ctx.fillRect(canvas.width - 60, cy - 100, 20, 200);
+            ctx.fillStyle = '#00ffcc';
+            const altHeight = Math.min(200, (plane.y / 300) * 200);
+            ctx.fillRect(canvas.width - 60, cy + 100 - altHeight, 20, altHeight);
+            ctx.fillText(`ALT: ${Math.round(plane.y)}`, canvas.width - 80, cy + 120);
+
+            // 수평 피치 라더 (Pitch Ladder)
+            ctx.translate(cx, cy);
+            ctx.rotate(-plane.roll);
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.5)';
+            ctx.lineWidth = 1;
+            for (let i = -4; i <= 4; i++) {
+                if (i === 0) continue;
+                const offset = i * 30 + (plane.pitch * 300);
+                ctx.beginPath();
+                ctx.moveTo(-30, offset);
+                ctx.lineTo(30, offset);
+                ctx.stroke();
+                ctx.fillText(`${i * 10}°`, 35, offset + 4);
+            }
+
+            ctx.restore();
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            plane.x = 0;
+            plane.y = 100;
+            plane.z = 0;
+            plane.pitch = 0;
+            plane.roll = 0;
+            plane.yaw = 0;
+            plane.speed = 40;
+            plane.throttle = 40;
+            score = 0;
+            ringsPassed = 0;
+            isGameOver = false;
+
+            document.getElementById('score').innerText = '0';
+            document.getElementById('rings').innerText = '0';
+            document.getElementById('game-over').style.display = 'none';
+
+            // 링 위치 초기화
+            rings.length = 0;
+            for (let i = 1; i <= 8; i++) {
+                createRing(i * 400);
+            }
+        }
+
+        // 메인 게임 루프
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
