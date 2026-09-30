@@ -1,419 +1,1511 @@
-<!DOCTYPE html>
+e<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 웹 항공 시뮬레이터</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>틈영단 OS - 가상 iOS 26 smartphon</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icon Library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & SF Pro style -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
             user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        body, html {
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        /* Smartphone Hardware Frame */
+        .phone-frame {
+            position: relative;
+            width: 380px;
+            height: 800px;
+            max-height: 94vh;
+            aspect-ratio: 9 / 19.5;
+            background: #18181b;
+            border-radius: 52px;
+            padding: 12px;
+            box-shadow: 
+                0 0 0 3px #52525b,
+                0 0 0 6px #27272a,
+                0 25px 60px rgba(0, 0, 0, 0.8),
+                0 0 100px rgba(99, 102, 241, 0.15);
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        /* Physical Side Buttons */
+        .side-btn {
+            position: absolute;
+            background: linear-gradient(to right, #3f3f46, #27272a);
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 5;
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.2);
+        }
+        .side-btn:active {
+            filter: brightness(1.3);
+        }
+        .btn-volume-up { left: -9px; top: 140px; width: 6px; height: 50px; }
+        .btn-volume-down { left: -9px; top: 200px; width: 6px; height: 50px; }
+        .btn-power { right: -9px; top: 170px; width: 6px; height: 75px; }
+
+        /* Inner Phone Screen Display */
+        .phone-screen {
+            position: relative;
             width: 100%;
             height: 100%;
+            border-radius: 42px;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
         }
-        #canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
+
+        /* Dynamic Liquid Wallpapers */
+        .wallpaper-1 { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%); }
+        .wallpaper-2 { background: linear-gradient(135deg, #4c0519 0%, #881337 50%, #9f1239 100%); }
+        .wallpaper-3 { background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%); }
+        .wallpaper-4 { background: linear-gradient(135deg, #1e3a8a 0%, #0284c7 50%, #38bdf8 100%); }
+        .wallpaper-5 { background: linear-gradient(135deg, #581c87 0%, #7e22ce 50%, #c084fc 100%); }
+        .wallpaper-6 { background: linear-gradient(135deg, #701a75 0%, #a21caf 50%, #f472b6 100%); }
+        .wallpaper-7 { background: linear-gradient(135deg, #451a03 0%, #b45309 50%, #fbbf24 100%); }
+        .wallpaper-8 { background: linear-gradient(135deg, #18181b 0%, #27272a 50%, #3f3f46 100%); }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #00ffcc;
-            font-family: monospace;
-            font-size: 16px;
-            text-shadow: 0 0 5px rgba(0, 255, 204, 0.7);
-            pointer-events: none;
+        .glass-card {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        #controls-info {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.6;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            pointer-events: none;
+
+        /* iOS Squircle App Icon */
+        .squircle {
+            border-radius: 22%;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
         }
-        #game-over {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff3333;
-            font-size: 40px;
-            font-weight: bold;
-            text-align: center;
-            background: rgba(0,0,0,0.85);
-            padding: 30px 50px;
-            border-radius: 15px;
-            border: 2px solid #ff3333;
+        .squircle:active {
+            transform: scale(0.92);
         }
-        #game-over button {
-            margin-top: 20px;
-            padding: 10px 25px;
-            font-size: 18px;
-            background: #ff3333;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        /* Keyframe Animations */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
         }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        /* 3D Card Flip styling */
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
     </style>
 </head>
 <body>
 
-    <canvas id="canvas"></canvas>
+    <div class="phone-frame" id="phone-hardware">
+        <!-- Physical Side Buttons -->
+        <div class="side-btn btn-volume-up" id="hw-vol-up" title="Volume Up"></div>
+        <div class="side-btn btn-volume-down" id="hw-vol-down" title="Volume Down"></div>
+        <div class="side-btn btn-power" id="hw-power" title="Power Lock/Unlock"></div>
 
-    <div id="ui-overlay">
-        <div>SCORE: <span id="score">0</span></div>
-        <div>RINGS PASSED: <span id="rings">0</span></div>
-    </div>
+        <!-- Inner Phone Screen -->
+        <div class="phone-screen wallpaper-1 relative" id="phone-screen">
+            
+            <!-- Dynamic Screen Brightness Overlay -->
+            <div id="brightness-overlay" class="absolute inset-0 bg-black pointer-events-none z-40 transition-opacity duration-200" style="opacity: 0;"></div>
 
-    <div id="controls-info">
-        <strong>🎮 조작 방법:</strong><br>
-        • <b>방향키 위/아래 (↑ / ↓)</b> : 피치 (수직 상승/하강 - 조종간 당기기/밀기)<br>
-        • <b>방향키 좌/우 (← / →)</b> : 롤 (좌/우 회전)<br>
-        • <b>Shift / Ctrl</b> : 가속 (Throttle Up) / 감속 (Throttle Down)<br>
-        • <b>목표</b> : 공중에 떠 있는 노란색 링을 통과하세요!
-    </div>
+            <!-- iOS Status Bar & Dynamic Island Cutout -->
+            <div class="relative w-full pt-2 px-6 flex justify-between items-center text-xs font-semibold z-50 select-none">
+                <span id="status-clock" class="text-white drop-shadow">09:41</span>
+                
+                <!-- Dynamic Island -->
+                <div id="dynamic-island" class="absolute left-1/2 -translate-x-1/2 top-2 bg-black text-white rounded-full px-3 py-1 flex items-center justify-between transition-all duration-300 shadow-lg cursor-pointer z-50 w-28 h-7">
+                    <div class="flex items-center space-x-1.5 overflow-hidden">
+                        <div id="island-icon" class="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0 animate-pulse"></div>
+                        <span id="island-text" class="text-[10px] truncate font-medium text-gray-200">틈영단 OS</span>
+                    </div>
+                    <!-- Audio Equalizer Visualizer Bars in Dynamic Island -->
+                    <div id="island-eq" class="hidden flex items-end space-x-0.5 h-3">
+                        <div class="w-0.5 bg-indigo-400 animate-bounce h-2" style="animation-delay: 0.1s"></div>
+                        <div class="w-0.5 bg-indigo-400 animate-bounce h-3" style="animation-delay: 0.3s"></div>
+                        <div class="w-0.5 bg-indigo-400 animate-bounce h-1.5" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>
 
-    <div id="game-over">
-        CRASHED!<br>비행기가 추락했습니다!
-        <br>
-        <button onclick="resetGame()">다시 시작</button>
+                <div class="flex items-center space-x-2 text-white drop-shadow">
+                    <i class="fa-solid fa-wifi text-[10px]"></i>
+                    <i class="fa-solid fa-battery-three-quarters text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Volume HUD Overlay Popup -->
+            <div id="volume-hud" class="absolute left-3 top-16 bg-black/70 backdrop-blur-md border border-white/20 rounded-2xl p-2 flex flex-col items-center space-y-2 z-50 opacity-0 pointer-events-none transition-all duration-300 shadow-xl">
+                <i class="fa-solid fa-volume-high text-xs text-indigo-400"></i>
+                <div class="w-1.5 h-20 bg-gray-700/60 rounded-full relative overflow-hidden">
+                    <div id="volume-hud-bar" class="absolute bottom-0 w-full bg-indigo-500 rounded-full transition-all duration-100" style="height: 80%;"></div>
+                </div>
+            </div>
+
+            <!-- Focus Mode Lock Screen Overlay -->
+            <div id="focus-lock-overlay" class="absolute inset-0 bg-red-950/90 backdrop-blur-xl z-50 hidden flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                <i class="fa-solid fa-lock text-5xl text-red-400 mb-4 animate-bounce"></i>
+                <h2 class="text-xl font-bold text-white mb-2">집중 공부 모드 작동 중!</h2>
+                <p class="text-xs text-red-200 mb-6">목표 학습 단어 수(10개)를 달성하기 전까지는 홈 화면으로 나갈 수 없습니다.</p>
+                <button onclick="hideFocusLockAlert()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2.5 rounded-full text-xs shadow-lg">공부 계속하기</button>
+            </div>
+
+            <!-- Lock Screen Layer -->
+            <div id="lock-screen" class="absolute inset-0 flex flex-col justify-between pt-12 pb-8 px-6 z-30 transition-all duration-500">
+                <div class="flex flex-col items-center text-center mt-4">
+                    <i id="lock-icon" class="fa-solid fa-lock text-sm text-white/80 mb-2"></i>
+                    <div id="lock-date" class="text-xs font-medium text-gray-300 tracking-wide">10월 24일 목요일</div>
+                    <div id="lock-clock" class="text-6xl font-light text-white tracking-tight my-1 drop-shadow-md">09:41</div>
+                    <div class="mt-3 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs text-white/90 border border-white/10 flex items-center space-x-2">
+                        <i class="fa-solid fa-sun text-yellow-400"></i>
+                        <span>서울 22°C · 쾌청</span>
+                    </div>
+                </div>
+
+                <!-- Swipe / Unlock Indicator -->
+                <div id="unlock-prompt" onclick="showPasscodeKeypad()" class="flex flex-col items-center cursor-pointer animate-pulse">
+                    <i class="fa-solid fa-chevron-up text-xs text-white/70 mb-1"></i>
+                    <span class="text-xs text-white/80 font-medium">위로 쓸어올리거나 터치하여 잠금해제</span>
+                </div>
+
+                <!-- Passcode Keypad Modal -->
+                <div id="passcode-modal" class="hidden flex flex-col items-center w-full animate-fade-in">
+                    <p class="text-xs text-white/80 mb-3 font-medium">암호 입력</p>
+                    <div id="pin-dots" class="flex space-x-3 mb-6">
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                        <div class="w-3.5 h-3.5 rounded-full border border-white/60"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 w-full max-w-[240px]">
+                        <button onclick="pressPin('1')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">1</button>
+                        <button onclick="pressPin('2')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">2</button>
+                        <button onclick="pressPin('3')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">3</button>
+                        <button onclick="pressPin('4')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">4</button>
+                        <button onclick="pressPin('5')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">5</button>
+                        <button onclick="pressPin('6')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">6</button>
+                        <button onclick="pressPin('7')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">7</button>
+                        <button onclick="pressPin('8')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">8</button>
+                        <button onclick="pressPin('9')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">9</button>
+                        <button onclick="cancelPasscode()" class="text-white/70 text-xs w-14 h-14 flex items-center justify-center mx-auto font-medium">취소</button>
+                        <button onclick="pressPin('0')" class="glass-panel text-white font-medium text-lg w-14 h-14 rounded-full flex items-center justify-center mx-auto active:bg-white/30">0</button>
+                        <button onclick="backspacePin()" class="text-white/80 text-sm w-14 h-14 flex items-center justify-center mx-auto"><i class="fa-solid fa-delete-left"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Home Screen Layer -->
+            <div id="home-screen" class="hidden absolute inset-0 flex flex-col justify-between pt-10 pb-4 px-4 z-20">
+                <!-- Top Widgets Section -->
+                <div class="space-y-3 mt-2">
+                    <!-- Daily Vocab Widget -->
+                    <div class="glass-panel rounded-2xl p-3.5 text-white flex items-center justify-between border border-white/20 shadow-lg">
+                        <div>
+                            <div class="flex items-center space-x-1.5 text-[10px] text-indigo-300 font-semibold tracking-wider uppercase">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>오늘의 추천 틈단어</span>
+                            </div>
+                            <div id="widget-word" class="text-lg font-bold text-white mt-0.5">meticulous</div>
+                            <div id="widget-meaning" class="text-xs text-gray-200">꼼꼼한, 세심한</div>
+                        </div>
+                        <button onclick="speakWord(document.getElementById('widget-word').innerText)" class="w-9 h-9 rounded-full bg-indigo-600/80 hover:bg-indigo-500 flex items-center justify-center text-white text-xs shadow-md active:scale-95">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+
+                    <!-- Points & User Stats Widget -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="glass-card rounded-xl p-2.5 flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-sm">
+                                <i class="fa-solid fa-coins"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-300">보유 포인트</div>
+                                <div id="user-points" class="text-xs font-bold text-amber-300">1,250 P</div>
+                            </div>
+                        </div>
+                        <div class="glass-card rounded-xl p-2.5 flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-gray-300">완료한 암기</div>
+                                <div id="completed-count" class="text-xs font-bold text-emerald-300">42개</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Apps Grid (6 Primary Apps) -->
+                <div class="grid grid-cols-4 gap-y-4 gap-x-2 px-2 my-auto">
+                    <!-- App 1: Vocab Engine -->
+                    <div onclick="openApp('app-vocab')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-book-open"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">틈영단</span>
+                    </div>
+
+                    <!-- App 2: Mini-Games -->
+                    <div onclick="openApp('app-games')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">미니게임</span>
+                    </div>
+
+                    <!-- App 3: Music Synthesizer -->
+                    <div onclick="openApp('app-music')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-music"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">뮤직</span>
+                    </div>
+
+                    <!-- App 4: Avatar Shop -->
+                    <div onclick="openApp('app-avatar')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-shirt"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">꾸미기</span>
+                    </div>
+
+                    <!-- App 5: Custom Vocab Manager -->
+                    <div onclick="openApp('app-custom-vocab')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">단어장</span>
+                    </div>
+
+                    <!-- App 6: Settings -->
+                    <div onclick="openApp('app-settings')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="squircle w-14 h-14 bg-gradient-to-br from-gray-600 to-slate-800 flex items-center justify-center text-white text-2xl shadow-lg">
+                            <i class="fa-solid fa-gear"></i>
+                        </div>
+                        <span class="text-[11px] text-white mt-1.5 font-medium drop-shadow">설정</span>
+                    </div>
+                </div>
+
+                <!-- iOS Dynamic Frosted Glass Dock Bar -->
+                <div class="glass-panel rounded-3xl p-2.5 flex justify-around items-center border border-white/20 shadow-2xl mb-1">
+                    <div onclick="openApp('app-vocab')" class="squircle w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div onclick="openApp('app-games')" class="squircle w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <div onclick="openApp('app-music')" class="squircle w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-compact-disc"></i>
+                    </div>
+                    <div onclick="openApp('app-settings')" class="squircle w-12 h-12 bg-gradient-to-br from-gray-600 to-slate-800 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 1: Vocab Engine Window -->
+            <div id="app-vocab" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-book-open"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">틈영단 학습 센터</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Level Tier Selector -->
+                <div class="mt-3">
+                    <label class="text-[11px] text-gray-400 font-medium">학습 난이도 선택</label>
+                    <div class="grid grid-cols-2 gap-2 mt-1.5">
+                        <button onclick="selectLevel('beginner')" id="lvl-beginner" class="lvl-btn glass-card p-2.5 rounded-xl border-indigo-500 text-left flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-bold text-white">🌱 초급 (중학 필수)</div>
+                                <div class="text-[10px] text-gray-400">기초 필수 단어</div>
+                            </div>
+                        </button>
+                        <button onclick="selectLevel('intermediate')" id="lvl-intermediate" class="lvl-btn glass-card p-2.5 rounded-xl text-left flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-bold text-white">🌿 중급 (고교 수능)</div>
+                                <div class="text-[10px] text-gray-400">수능/모의고사</div>
+                            </div>
+                        </button>
+                        <button onclick="selectLevel('advanced')" id="lvl-advanced" class="lvl-btn glass-card p-2.5 rounded-xl text-left flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-bold text-white">🌳 고급 (TOEIC)</div>
+                                <div class="text-[10px] text-gray-400">토익/공인영어</div>
+                            </div>
+                        </button>
+                        <button onclick="selectLevel('expert')" id="lvl-expert" class="lvl-btn glass-card p-2.5 rounded-xl text-left flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-bold text-white">💼 마스터 (SAT)</div>
+                                <div class="text-[10px] text-gray-400">최고난도 어휘</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Focus Lock Toggle Option -->
+                <div class="glass-panel p-3 rounded-xl border border-white/10 my-3 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-white flex items-center space-x-1.5">
+                            <i class="fa-solid fa-shield-halved text-red-400"></i>
+                            <span>집중 잠금 모드</span>
+                        </div>
+                        <div class="text-[10px] text-gray-300">10단어 맞출 때까지 이탈 방지</div>
+                    </div>
+                    <input type="checkbox" id="focus-mode-toggle" class="w-4 h-4 accent-indigo-500 cursor-pointer">
+                </div>
+
+                <!-- Study Mode Selection Tabs -->
+                <div class="flex space-x-2 border-b border-white/10 pb-2 mb-3">
+                    <button onclick="setStudyTab('flashcard')" id="tab-flashcard" class="flex-1 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow">플래시카드</button>
+                    <button onclick="setStudyTab('quiz')" id="tab-quiz" class="flex-1 py-1.5 bg-white/10 text-gray-300 rounded-lg text-xs font-semibold hover:bg-white/20">4지선다 퀴즈</button>
+                </div>
+
+                <!-- Study Content Area -->
+                <div id="study-area" class="flex-1 flex flex-col items-center justify-center">
+                    <!-- Flashcard Mode Component -->
+                    <div id="mode-flashcard" class="w-full flex flex-col items-center space-y-4">
+                        <div id="card-flipper" onclick="flipCard()" class="perspective-1000 w-full h-48 cursor-pointer">
+                            <div id="card-inner" class="relative w-full h-full duration-500 transform-style-3d glass-panel rounded-2xl border border-white/20 flex flex-col items-center justify-center p-4 text-center shadow-2xl">
+                                <!-- Front -->
+                                <div class="absolute inset-0 backface-hidden flex flex-col items-center justify-center p-4">
+                                    <span class="text-[10px] text-indigo-300 font-semibold mb-1">단어를 터치하면 뒤집힙니다</span>
+                                    <h1 id="fc-word" class="text-2xl font-extrabold text-white">abandon</h1>
+                                    <button onclick="event.stopPropagation(); speakWord(document.getElementById('fc-word').innerText)" class="mt-3 w-8 h-8 rounded-full bg-indigo-600/80 flex items-center justify-center text-white text-xs hover:bg-indigo-500">
+                                        <i class="fa-solid fa-volume-high"></i>
+                                    </button>
+                                </div>
+                                <!-- Back -->
+                                <div class="absolute inset-0 backface-hidden rotate-y-180 flex flex-col items-center justify-center p-4 bg-indigo-950/80 rounded-2xl">
+                                    <div id="fc-meaning" class="text-xl font-bold text-amber-300">버리다, 포기하다</div>
+                                    <div id="fc-example" class="text-xs text-gray-300 mt-2 italic">Never abandon your dreams.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4 w-full px-4">
+                            <button onclick="prevFlashcard()" class="flex-1 py-2 bg-white/10 text-white rounded-xl text-xs font-medium hover:bg-white/20 active:scale-95"><i class="fa-solid fa-arrow-left mr-1"></i> 이전</button>
+                            <span id="fc-progress" class="text-xs text-gray-400 font-semibold">1 / 25</span>
+                            <button onclick="nextFlashcard()" class="flex-1 py-2 bg-indigo-600 text-white rounded-xl text-xs font-medium hover:bg-indigo-500 active:scale-95">다음 <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- 4-Choice Quiz Mode Component -->
+                    <div id="mode-quiz" class="hidden w-full flex flex-col items-center space-y-3">
+                        <div class="w-full flex justify-between items-center text-xs text-gray-300 mb-1">
+                            <span id="quiz-score-display" class="font-bold text-indigo-400">점수: 0</span>
+                            <span id="quiz-progress-display" class="font-medium">문제 1/10</span>
+                        </div>
+                        <div class="glass-panel w-full p-4 rounded-2xl text-center border border-white/20">
+                            <div class="text-[10px] text-gray-400 font-semibold">다음 단어의 올바른 뜻은?</div>
+                            <h2 id="quiz-target-word" class="text-2xl font-extrabold text-white mt-1 mb-2">resilient</h2>
+                            <button onclick="speakWord(document.getElementById('quiz-target-word').innerText)" class="px-3 py-1 bg-indigo-600/60 rounded-full text-xs text-white hover:bg-indigo-500"><i class="fa-solid fa-volume-high mr-1"></i> 발음 듣기</button>
+                        </div>
+                        <div id="quiz-options-container" class="w-full space-y-2">
+                            <!-- Options injected dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 2: Mini-Games Hub Window -->
+            <div id="app-games" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-pink-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">영어 단어 미니게임 아케이드</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Games Selection Menu -->
+                <div id="games-menu" class="grid grid-cols-2 gap-3 mt-4">
+                    <div onclick="startMiniGame('catch')" class="glass-panel p-3.5 rounded-2xl border border-white/10 cursor-pointer hover:border-pink-500 transition flex flex-col items-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-basket-shopping"></i></div>
+                        <div class="text-xs font-bold text-white">낱말 받기</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">떨어지는 단어 바구니로 캐치!</div>
+                    </div>
+                    <div onclick="startMiniGame('card')" class="glass-panel p-3.5 rounded-2xl border border-white/10 cursor-pointer hover:border-pink-500 transition flex flex-col items-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-clone"></i></div>
+                        <div class="text-xs font-bold text-white">카드 뒤집기</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">3D 기억력 단어 매칭</div>
+                    </div>
+                    <div onclick="startMiniGame('mole')" class="glass-panel p-3.5 rounded-2xl border border-white/10 cursor-pointer hover:border-pink-500 transition flex flex-col items-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-hammer"></i></div>
+                        <div class="text-xs font-bold text-white">두더지 잡기</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">정답 두더지를 순발력있게!</div>
+                    </div>
+                    <div onclick="startMiniGame('shooter')" class="glass-panel p-3.5 rounded-2xl border border-white/10 cursor-pointer hover:border-pink-500 transition flex flex-col items-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-rocket"></i></div>
+                        <div class="text-xs font-bold text-white">스페이스 슈터</div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">우주선을 격추시켜 단어 파괴</div>
+                    </div>
+                </div>
+
+                <!-- Active Game Container Viewport -->
+                <div id="game-container" class="hidden flex-1 flex flex-col items-center justify-center mt-3 relative">
+                    <div class="w-full flex justify-between items-center text-xs mb-2">
+                        <button onclick="exitMiniGame()" class="px-2.5 py-1 bg-white/10 rounded-lg text-gray-300 text-[10px] font-semibold hover:bg-white/20"><i class="fa-solid fa-chevron-left mr-1"></i> 게임 나가기</button>
+                        <span id="game-score" class="font-bold text-amber-400">점수: 0</span>
+                    </div>
+                    <!-- Dynamic Game Canvas or HTML View -->
+                    <div id="game-viewport" class="w-full flex-1 bg-black/60 rounded-2xl border border-white/15 relative overflow-hidden flex items-center justify-center">
+                        <!-- Canvas games or Mole/Card match grids render here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 3: Synthesized Music Player Window -->
+            <div id="app-music" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-amber-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-music"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">Web Audio 음악 플레이어</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Music Album Display & Synth Waveform -->
+                <div class="flex flex-col items-center my-auto space-y-4">
+                    <div id="album-cover" class="w-40 h-40 rounded-3xl bg-gradient-to-tr from-amber-500 via-purple-600 to-indigo-600 shadow-2xl flex items-center justify-center text-white text-5xl relative overflow-hidden border border-white/20">
+                        <i id="album-icon" class="fa-solid fa-record-vinyl animate-spin" style="animation-duration: 8s;"></i>
+                    </div>
+
+                    <div class="text-center">
+                        <h3 id="music-title" class="text-base font-bold text-white">감성 발라드 피아노 루프</h3>
+                        <p id="music-genre" class="text-xs text-amber-400 font-medium">장르: Ballad (합성 오디오)</p>
+                    </div>
+
+                    <!-- Genre Selection Tabs -->
+                    <div class="grid grid-cols-5 gap-1.5 w-full">
+                        <button onclick="changeGenre('ballad')" id="genre-ballad" class="genre-btn py-1.5 bg-amber-600 text-white rounded-lg text-[10px] font-bold">발라드</button>
+                        <button onclick="changeGenre('rock')" id="genre-rock" class="genre-btn py-1.5 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold">락</button>
+                        <button onclick="changeGenre('hiphop')" id="genre-hiphop" class="genre-btn py-1.5 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold">힙합</button>
+                        <button onclick="changeGenre('rnb')" id="genre-rnb" class="genre-btn py-1.5 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold">R&B</button>
+                        <button onclick="changeGenre('lofi')" id="genre-lofi" class="genre-btn py-1.5 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold">Lo-Fi</button>
+                    </div>
+
+                    <!-- Audio Progress Bar Visual -->
+                    <div class="w-full space-y-1">
+                        <div class="w-full bg-gray-700/60 h-1.5 rounded-full overflow-hidden">
+                            <div id="music-progress" class="bg-amber-500 h-full w-1/3 transition-all"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-gray-400">
+                            <span>0:42</span>
+                            <span>2:30</span>
+                        </div>
+                    </div>
+
+                    <!-- Audio Player Controls -->
+                    <div class="flex items-center space-x-6 pt-2">
+                        <button onclick="prevGenre()" class="text-gray-300 hover:text-white text-lg"><i class="fa-solid fa-backward-step"></i></button>
+                        <button onclick="toggleMusicPlay()" id="music-play-btn" class="w-14 h-14 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-900 text-xl font-bold flex items-center justify-center shadow-lg active:scale-95">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="nextGenre()" class="text-gray-300 hover:text-white text-lg"><i class="fa-solid fa-forward-step"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 4: Avatar Customization Shop Window -->
+            <div id="app-avatar" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-shirt"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">아바타 캐릭터 꾸미기</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Avatar Preview Canvas Box -->
+                <div class="flex flex-col items-center my-3">
+                    <div id="avatar-preview-box" class="relative w-32 h-32 rounded-3xl glass-panel border-2 border-emerald-500/50 flex items-center justify-center shadow-xl overflow-hidden">
+                        <!-- Background Aura Animation -->
+                        <div id="avatar-aura" class="absolute inset-0 bg-gradient-to-tr from-amber-500/20 to-emerald-500/20 animate-pulse"></div>
+                        <!-- Base Character Face -->
+                        <div class="relative text-5xl">
+                            <i class="fa-solid fa-face-smile text-amber-300"></i>
+                            <!-- Equipped Headwear overlay -->
+                            <div id="equip-headwear" class="absolute -top-5 left-1/2 -translate-x-1/2 text-2xl text-amber-400">
+                                <i class="fa-solid fa-crown"></i>
+                            </div>
+                            <!-- Equipped Glasses overlay -->
+                            <div id="equip-eyewear" class="absolute top-2 left-1/2 -translate-x-1/2 text-xl text-black">
+                                <i class="fa-solid fa-glasses"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="text-xs text-amber-300 font-bold mt-2"><i class="fa-solid fa-coins mr-1"></i> 보유: <span id="shop-points">1,250</span> P</span>
+                </div>
+
+                <!-- Shop Items List -->
+                <div class="space-y-2 flex-1">
+                    <div class="text-xs text-gray-400 font-semibold mb-1">아이템 상점</div>
+                    <div id="shop-items-list" class="space-y-2">
+                        <!-- Dynamically filled by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 5: Custom Vocab Set Manager Window -->
+            <div id="app-custom-vocab" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-sky-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">나만의 단어장 관리</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <!-- Add New Word Form -->
+                <div class="glass-panel p-3 rounded-xl border border-white/10 my-3 space-y-2">
+                    <div class="text-xs font-bold text-sky-300">새 단어 추가하기</div>
+                    <input id="input-en-word" type="text" placeholder="영어 단어 (예: persistent)" class="w-full bg-black/40 text-white text-xs px-3 py-2 rounded-lg border border-white/10 focus:outline-none focus:border-sky-500">
+                    <input id="input-kr-meaning" type="text" placeholder="한글 뜻 (예: 끈기 있는)" class="w-full bg-black/40 text-white text-xs px-3 py-2 rounded-lg border border-white/10 focus:outline-none focus:border-sky-500">
+                    <button onclick="addCustomWord()" class="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg shadow active:scale-95">+ 단어장 저장</button>
+                </div>
+
+                <!-- Custom Vocab List -->
+                <div class="flex-1 space-y-2">
+                    <div class="text-xs text-gray-400 font-semibold flex justify-between">
+                        <span>저장된 나만의 단어</span>
+                        <span id="custom-word-count" class="text-sky-400 font-bold">0개</span>
+                    </div>
+                    <div id="custom-word-list" class="space-y-2 overflow-y-auto max-h-52">
+                        <!-- Custom words rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- APP 6: Settings Window -->
+            <div id="app-settings" class="app-window absolute inset-0 bg-slate-900/95 backdrop-blur-2xl z-30 hidden flex flex-col pt-10 pb-6 px-4 overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-7 h-7 rounded-lg bg-gray-600 flex items-center justify-center text-white text-xs">
+                            <i class="fa-solid fa-gear"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-white">설정</h2>
+                    </div>
+                    <button onclick="closeCurrentApp()" class="w-6 h-6 rounded-full bg-white/10 text-white text-xs flex items-center justify-center hover:bg-white/20"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="space-y-4 my-3">
+                    <!-- Passcode Lock Security Toggle -->
+                    <div class="glass-panel p-3 rounded-xl border border-white/10 flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-white">비밀번호 잠금 사용</div>
+                            <div class="text-[10px] text-gray-400">잠금 화면 4자리 PIN (기본: 1234)</div>
+                        </div>
+                        <input type="checkbox" id="setting-pin-toggle" checked onchange="togglePinSecurity(this.checked)" class="w-4 h-4 accent-indigo-500 cursor-pointer">
+                    </div>
+
+                    <!-- Screen Brightness Control Slider -->
+                    <div class="glass-panel p-3 rounded-xl border border-white/10 space-y-2">
+                        <div class="flex justify-between text-xs font-bold text-white">
+                            <span><i class="fa-solid fa-sun mr-1 text-amber-400"></i> 화면 밝기 조절</span>
+                            <span id="brightness-val-text">100%</span>
+                        </div>
+                        <input type="range" id="brightness-slider" min="0" max="80" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-indigo-500 cursor-pointer">
+                    </div>
+
+                    <!-- iOS Wallpaper Selector -->
+                    <div>
+                        <div class="text-xs text-gray-400 font-semibold mb-2">iOS 26 배경화면 선택</div>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div onclick="setWallpaper('wallpaper-1')" class="h-16 rounded-xl wallpaper-1 border-2 border-white/50 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-2')" class="h-16 rounded-xl wallpaper-2 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-3')" class="h-16 rounded-xl wallpaper-3 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-4')" class="h-16 rounded-xl wallpaper-4 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-5')" class="h-16 rounded-xl wallpaper-5 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-6')" class="h-16 rounded-xl wallpaper-6 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-7')" class="h-16 rounded-xl wallpaper-7 border-2 border-white/10 cursor-pointer shadow"></div>
+                            <div onclick="setWallpaper('wallpaper-8')" class="h-16 rounded-xl wallpaper-8 border-2 border-white/10 cursor-pointer shadow"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- iOS Home Bar Indicator -->
+            <div onclick="handleHomeBarClick()" class="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/60 hover:bg-white rounded-full cursor-pointer z-50 shadow"></div>
+        </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        // 게임 상태 변수
-        let isGameOver = false;
-        let score = 0;
-        let ringsPassed = 0;
-
-        // 비행기 물리학 상태
-        const plane = {
-            x: 0,
-            y: 100,  // 고도
-            z: 0,
-            pitch: 0, // 상하 기울기 (라디안)
-            roll: 0,  // 좌우 기울기 (라디안)
-            yaw: 0,   // 수평 회전 (라디안)
-            speed: 40,
-            minSpeed: 10,
-            maxSpeed: 100,
-            throttle: 40
+        // Global Application State
+        const state = {
+            isLocked: true,
+            pinEnabled: true,
+            pinCode: "1234",
+            currentPinInput: "",
+            masterVolume: 0.8,
+            points: 1250,
+            completedWords: 42,
+            currentApp: null,
+            studyLevel: 'beginner',
+            studyTab: 'flashcard',
+            flashcardIndex: 0,
+            quizScore: 0,
+            quizTargetIndex: 0,
+            focusModeActive: false,
+            musicPlaying: false,
+            musicGenre: 'ballad',
+            equippedHeadwear: 'crown',
+            equippedEyewear: 'glasses',
+            customWords: [
+                { en: "resilient", kr: "회복력 있는, 회복 빠른" },
+                { en: "meticulous", kr: "꼼꼼한, 세심한" }
+            ]
         };
 
-        // 키 입력 처리
-        const keys = {};
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            initAudio(); // 첫 키 입력 시 오디오 활성화
+        // Vocabulary Database (100+ words across 4 tiers)
+        const vocabDB = {
+            beginner: [
+                { en: "abandon", kr: "버리다, 포기하다", ex: "Never abandon your dreams." },
+                { en: "accuse", kr: "고발하다, 비난하다", ex: "Do not accuse others without proof." },
+                { en: "benefit", kr: "혜택, 이익을 얻다", ex: "Exercise has many benefits." },
+                { en: "candidate", kr: "후보자, 지원자", ex: "He is a strong candidate." },
+                { en: "delight", kr: "기쁨, 즐겁게 하다", ex: "The music brought delight." },
+                { en: "eager", kr: "열심인, 열망하는", ex: "She was eager to learn." },
+                { en: "frequent", kr: "빈번한, 자주 일어나는", ex: "He made frequent visits." },
+                { en: "gather", kr: "모으다, 수집하다", ex: "They gather together daily." }
+            ],
+            intermediate: [
+                { en: "accomplish", kr: "성취하다, 완수하다", ex: "You can accomplish anything." },
+                { en: "benevolent", kr: "자애로운, 친절한", ex: "A benevolent leader listened." },
+                { en: "comprehend", kr: "이해하다, 파악하다", ex: "Hard to comprehend the scale." },
+                { en: "drastic", kr: "과감한, 급격한", ex: "We need drastic measures." },
+                { en: "eloquent", kr: "유창한, 설득력 있는", ex: "She gave an eloquent speech." },
+                { en: "fluctuate", kr: "변동하다, 오르내리다", ex: "Prices fluctuate constantly." }
+            ],
+            advanced: [
+                { en: "meticulous", kr: "꼼꼼한, 세심한", ex: "He paid meticulous attention." },
+                { en: "resilient", kr: "회복력 있는", ex: "Kids are remarkably resilient." },
+                { en: "scrutinize", kr: "면밀히 조사하다", ex: "Scrutinize every detail." },
+                { en: "transient", kr: "일시적인, 순간의", ex: "Joy can be transient." }
+            ],
+            expert: [
+                { en: "anachronism", kr: "시대착오적인 것", ex: "That rule is an anachronism." },
+                { en: "ubiquitous", kr: "어디에나 존재하는", ex: "Smartphones are ubiquitous." },
+                { en: "quintessential", kr: "전형적인, 본질적인", ex: "A quintessential example." }
+            ]
+        };
+
+        // Shop Items Data
+        const shopItems = [
+            { id: 'crown', name: '황금 왕관', type: 'headwear', icon: 'fa-crown', price: 300 },
+            { id: 'cat', name: '고양이 귀', type: 'headwear', icon: 'fa-cat', price: 200 },
+            { id: 'grad', name: '학사모', type: 'headwear', icon: 'fa-graduation-cap', price: 250 },
+            { id: 'glasses', name: '지성 안경', type: 'eyewear', icon: 'fa-glasses', price: 150 },
+            { id: 'sunglasses', name: '선글라스', type: 'eyewear', icon: 'fa-glasses', price: 200 }
+        ];
+
+        // Web Audio API Context and Synthesizer Engine
+        let audioCtx = null;
+        let activeAudioNodes = [];
+
+        function initAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Global User Interaction Listener to Unlock Audio Context
+        document.addEventListener('pointerdown', () => initAudioContext(), { once: false });
+
+        // Synthesize Sound Effects
+        function playSFX(type) {
+            initAudioContext();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            gain.gain.value = state.masterVolume * 0.2;
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.setValueAtTime(150, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+        }
+
+        // TTS Pronunciation Engine
+        function speakWord(text) {
+            initAudioContext();
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop any active speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.9;
+                utterance.volume = state.masterVolume;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Hardware Side Button Handlers
+        document.getElementById('hw-vol-up').addEventListener('click', () => {
+            state.masterVolume = Math.min(1, state.masterVolume + 0.1);
+            showVolumeHUD();
+            playSFX('click');
         });
-        window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // 오디오 엔진 (Web Audio API)
-        let audioCtx, oscillator, gainNode;
-        function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            oscillator = audioCtx.createOscillator();
-            gainNode = audioCtx.createGain();
-            
-            oscillator.type = 'sawtooth';
-            oscillator.frequency.setValueAtTime(60, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        document.getElementById('hw-vol-down').addEventListener('click', () => {
+            state.masterVolume = Math.max(0, state.masterVolume - 0.1);
+            showVolumeHUD();
+            playSFX('click');
+        });
 
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.start();
+        document.getElementById('hw-power').addEventListener('click', () => {
+            playSFX('click');
+            if (state.isLocked) {
+                // Wake up screen or show lock
+                document.getElementById('lock-screen').classList.remove('hidden');
+            } else {
+                // Lock screen
+                lockDevice();
+            }
+        });
+
+        function showVolumeHUD() {
+            const hud = document.getElementById('volume-hud');
+            const bar = document.getElementById('volume-hud-bar');
+            bar.style.height = `${state.masterVolume * 100}%`;
+            hud.style.opacity = '1';
+            clearTimeout(window.hudTimer);
+            window.hudTimer = setTimeout(() => {
+                hud.style.opacity = '0';
+            }, 1800);
         }
 
-        function updateAudio() {
-            if (oscillator && audioCtx) {
-                const pitchFreq = 40 + (plane.speed * 1.5);
-                oscillator.frequency.setTargetAtTime(pitchFreq, audioCtx.currentTime, 0.1);
+        function lockDevice() {
+            state.isLocked = true;
+            document.getElementById('lock-screen').classList.remove('hidden');
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('unlock-prompt').classList.remove('hidden');
+            document.getElementById('passcode-modal').classList.add('hidden');
+            state.currentPinInput = "";
+            updatePinDots();
+        }
+
+        function showPasscodeKeypad() {
+            playSFX('click');
+            if (!state.pinEnabled) {
+                unlockDevice();
+                return;
+            }
+            document.getElementById('unlock-prompt').classList.add('hidden');
+            document.getElementById('passcode-modal').classList.remove('hidden');
+        }
+
+        function cancelPasscode() {
+            playSFX('click');
+            document.getElementById('passcode-modal').classList.add('hidden');
+            document.getElementById('unlock-prompt').classList.remove('hidden');
+            state.currentPinInput = "";
+            updatePinDots();
+        }
+
+        function pressPin(digit) {
+            playSFX('click');
+            if (state.currentPinInput.length < 4) {
+                state.currentPinInput += digit;
+                updatePinDots();
+                if (state.currentPinInput.length === 4) {
+                    setTimeout(checkPin, 150);
+                }
             }
         }
 
-        // 3D 링 목표 생성
-        const rings = [];
-        function createRing(zPos) {
-            rings.push({
-                x: (Math.random() - 0.5) * 600,
-                y: 50 + Math.random() * 150,
-                z: zPos,
-                radius: 30,
-                passed: false
-            });
+        function backspacePin() {
+            playSFX('click');
+            state.currentPinInput = state.currentPinInput.slice(0, -1);
+            updatePinDots();
         }
 
-        for (let i = 1; i <= 8; i++) {
-            createRing(i * 400);
+        function updatePinDots() {
+            const dots = document.getElementById('pin-dots').children;
+            for (let i = 0; i < 4; i++) {
+                if (i < state.currentPinInput.length) {
+                    dots[i].className = "w-3.5 h-3.5 rounded-full bg-white border border-white";
+                } else {
+                    dots[i].className = "w-3.5 h-3.5 rounded-full border border-white/60";
+                }
+            }
         }
 
-        // 비행 및 위치 업데이트
-        function update() {
-            if (isGameOver) return;
+        function checkPin() {
+            if (state.currentPinInput === state.pinCode) {
+                playSFX('correct');
+                unlockDevice();
+            } else {
+                playSFX('wrong');
+                const modal = document.getElementById('passcode-modal');
+                modal.classList.add('animate-shake');
+                setTimeout(() => modal.classList.remove('animate-shake'), 400);
+                state.currentPinInput = "";
+                updatePinDots();
+            }
+        }
 
-            // 가속도 제어
-            if (keys['ShiftLeft'] || keys['ShiftRight']) plane.throttle = Math.min(plane.maxSpeed, plane.throttle + 0.5);
-            if (keys['ControlLeft'] || keys['ControlRight']) plane.throttle = Math.max(plane.minSpeed, plane.throttle - 0.5);
+        function unlockDevice() {
+            state.isLocked = false;
+            document.getElementById('lock-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+        }
 
-            // 속도 감쇄 및 추력 적용
-            plane.speed += (plane.throttle - plane.speed) * 0.05;
-
-            // 조종 입력 (피치 & 롤)
-            const turnRate = 0.03;
-            if (keys['ArrowUp'] || keys['KeyW']) plane.pitch -= turnRate;   // 피치 다운
-            if (keys['ArrowDown'] || keys['KeyS']) plane.pitch += turnRate; // 피치 업
-            if (keys['ArrowLeft'] || keys['KeyA']) plane.roll -= turnRate;  // 롤 좌측
-            if (keys['ArrowRight'] || keys['KeyD']) plane.roll += turnRate; // 롤 우측
-
-            // 복원력 (키를 떼면 살짝 평형으로 복귀)
-            plane.pitch *= 0.96;
-            plane.roll *= 0.95;
-
-            // 롤 각도에 따른 요(Yaw) 회전 발생
-            plane.yaw += plane.roll * 0.02;
-
-            // 3D 이동 벡터 계산
-            const cosP = Math.cos(plane.pitch);
-            const sinP = Math.sin(plane.pitch);
-            const cosY = Math.cos(plane.yaw);
-            const sinY = Math.sin(plane.yaw);
-
-            plane.x += sinY * cosP * plane.speed * 0.1;
-            plane.y += sinP * plane.speed * 0.1;
-            plane.z += cosY * cosP * plane.speed * 0.1;
-
-            // 중력 및 추락 검사
-            if (plane.speed < 20) plane.y -= 0.5; // 실속(Stall) 시 낙하
-            if (plane.y <= 0) {
-                plane.y = 0;
-                isGameOver = true;
-                document.getElementById('game-over').style.display = 'block';
+        function openApp(appId) {
+            playSFX('click');
+            state.currentApp = appId;
+            document.querySelectorAll('.app-window').forEach(win => win.classList.add('hidden'));
+            const targetApp = document.getElementById(appId);
+            if (targetApp) {
+                targetApp.classList.remove('hidden');
             }
 
-            // 링 충돌 및 스폰 검사
-            rings.forEach(ring => {
-                const dx = plane.x - ring.x;
-                const dy = plane.y - ring.y;
-                const dz = plane.z - ring.z;
-                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-                if (!ring.passed && dist < ring.radius + 10) {
-                    ring.passed = true;
-                    score += 100;
-                    ringsPassed++;
-                    document.getElementById('score').innerText = score;
-                    document.getElementById('rings').innerText = ringsPassed;
-                }
-            });
-
-            // 지난 링 재생성
-            const maxZ = Math.max(...rings.map(r => r.z));
-            rings.forEach(ring => {
-                if (plane.z - ring.z > 200) {
-                    ring.x = plane.x + (Math.random() - 0.5) * 600;
-                    ring.y = Math.max(30, plane.y + (Math.random() - 0.5) * 100);
-                    ring.z = maxZ + 300 + Math.random() * 100;
-                    ring.passed = false;
-                }
-            });
-
-            updateAudio();
+            if (appId === 'app-vocab') renderStudyMode();
+            if (appId === 'app-avatar') renderShop();
+            if (appId === 'app-custom-vocab') renderCustomVocabList();
         }
 
-        // 3D 좌표 변환 (카메라 뷰 연산)
-        function project(x, y, z) {
-            // 카메라 기준 상대 위치
-            let dx = x - plane.x;
-            let dy = y - plane.y;
-            let dz = z - plane.z;
-
-            // Yaw 회전
-            const cosY = Math.cos(-plane.yaw);
-            const sinY = Math.sin(-plane.yaw);
-            let rx = dx * cosY - dz * sinY;
-            let rz = dx * sinY + dz * cosY;
-
-            // Pitch 회전
-            const cosP = Math.cos(-plane.pitch);
-            const sinP = Math.sin(-plane.pitch);
-            let ry = dy * cosP - rz * sinP;
-            rz = dy * sinP + rz * cosP;
-
-            // 원근 투영 (Perspective Projection)
-            const fov = 400;
-            if (rz <= 5) return null; // 카메라 뒤에 있는 물체는 안 그림
-
-            const scale = fov / rz;
-            const screenX = canvas.width / 2 + rx * scale;
-            const screenY = canvas.height / 2 - ry * scale;
-
-            return { x: screenX, y: screenY, scale: scale, depth: rz };
+        function closeCurrentApp() {
+            if (state.focusModeActive && state.currentApp === 'app-vocab') {
+                showFocusLockAlert();
+                return;
+            }
+            playSFX('click');
+            document.querySelectorAll('.app-window').forEach(win => win.classList.add('hidden'));
+            state.currentApp = null;
         }
 
-        // 렌더링 (그래픽 그리기)
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function handleHomeBarClick() {
+            if (state.isLocked) return;
+            if (state.focusModeActive && state.currentApp === 'app-vocab') {
+                showFocusLockAlert();
+                return;
+            }
+            closeCurrentApp();
+        }
 
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+        function showFocusLockAlert() {
+            playSFX('wrong');
+            document.getElementById('focus-lock-overlay').classList.remove('hidden');
+        }
 
-            // 1. 하늘과 땅 (인공 수평선 연산)
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(-plane.roll);
-            ctx.translate(0, plane.pitch * 300);
+        function hideFocusLockAlert() {
+            playSFX('click');
+            document.getElementById('focus-lock-overlay').classList.add('hidden');
+        }
 
-            // 하늘
-            ctx.fillStyle = '#1e3c72';
-            ctx.fillRect(-canvas.width * 2, -canvas.height * 2, canvas.width * 4, canvas.height * 2);
+        function selectLevel(lvl) {
+            playSFX('click');
+            state.studyLevel = lvl;
+            document.querySelectorAll('.lvl-btn').forEach(btn => btn.classList.remove('border-indigo-500'));
+            document.getElementById(`lvl-${lvl}`).classList.add('border-indigo-500');
+            state.flashcardIndex = 0;
+            state.quizScore = 0;
+            state.quizTargetIndex = 0;
+            renderStudyMode();
+        }
 
-            // 격자 패턴 땅
-            ctx.fillStyle = '#1b2a47';
-            ctx.fillRect(-canvas.width * 2, 0, canvas.width * 4, canvas.height * 2);
+        function setStudyTab(tab) {
+            playSFX('click');
+            state.studyTab = tab;
+            if (tab === 'flashcard') {
+                document.getElementById('tab-flashcard').className = "flex-1 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow";
+                document.getElementById('tab-quiz').className = "flex-1 py-1.5 bg-white/10 text-gray-300 rounded-lg text-xs font-semibold hover:bg-white/20";
+                document.getElementById('mode-flashcard').classList.remove('hidden');
+                document.getElementById('mode-quiz').classList.add('hidden');
+            } else {
+                document.getElementById('tab-quiz').className = "flex-1 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold shadow";
+                document.getElementById('tab-flashcard').className = "flex-1 py-1.5 bg-white/10 text-gray-300 rounded-lg text-xs font-semibold hover:bg-white/20";
+                document.getElementById('mode-quiz').classList.remove('hidden');
+                document.getElementById('mode-flashcard').classList.add('hidden');
+                loadQuizQuestion();
+            }
+        }
 
-            // 수평선 선
-            ctx.strokeStyle = '#00ffcc';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(-canvas.width * 2, 0);
-            ctx.lineTo(canvas.width * 2, 0);
-            ctx.stroke();
+        function renderStudyMode() {
+            const list = vocabDB[state.studyLevel] || vocabDB.beginner;
+            const currentWord = list[state.flashcardIndex % list.length];
+            document.getElementById('fc-word').innerText = currentWord.en;
+            document.getElementById('fc-meaning').innerText = currentWord.kr;
+            document.getElementById('fc-example').innerText = currentWord.ex || "";
+            document.getElementById('fc-progress').innerText = `${(state.flashcardIndex % list.length) + 1} / ${list.length}`;
+        }
 
-            ctx.restore();
+        function flipCard() {
+            playSFX('click');
+            document.getElementById('card-inner').classList.toggle('rotate-y-180');
+        }
 
-            // 2. 3D 링 목표물 그리기
-            rings.sort((a, b) => b.z - a.z); // 뒤에 있는 링부터 렌더링
-            rings.forEach(ring => {
-                const p = project(ring.x, ring.y, ring.z);
-                if (p) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, ring.radius * p.scale, 0, Math.PI * 2);
-                    ctx.lineWidth = Math.max(2, 5 * p.scale);
-                    ctx.strokeStyle = ring.passed ? '#00ff00' : '#ffcc00';
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = ring.passed ? '#00ff00' : '#ffcc00';
-                    ctx.stroke();
-                    ctx.restore();
-                }
+        function nextFlashcard() {
+            playSFX('click');
+            document.getElementById('card-inner').classList.remove('rotate-y-180');
+            const list = vocabDB[state.studyLevel] || vocabDB.beginner;
+            state.flashcardIndex = (state.flashcardIndex + 1) % list.length;
+            setTimeout(renderStudyMode, 150);
+        }
+
+        function prevFlashcard() {
+            playSFX('click');
+            document.getElementById('card-inner').classList.remove('rotate-y-180');
+            const list = vocabDB[state.studyLevel] || vocabDB.beginner;
+            state.flashcardIndex = (state.flashcardIndex - 1 + list.length) % list.length;
+            setTimeout(renderStudyMode, 150);
+        }
+
+        function loadQuizQuestion() {
+            const list = vocabDB[state.studyLevel] || vocabDB.beginner;
+            const target = list[state.quizTargetIndex % list.length];
+            document.getElementById('quiz-target-word').innerText = target.en;
+            document.getElementById('quiz-score-display').innerText = `점수: ${state.quizScore}`;
+            document.getElementById('quiz-progress-display').innerText = `문제 ${state.quizTargetIndex + 1}/10`;
+
+            // Focus Mode Activation Check
+            const focusChecked = document.getElementById('focus-mode-toggle').checked;
+            state.focusModeActive = focusChecked && state.quizTargetIndex < 10;
+
+            // Generate 4 non-duplicate options
+            let options = [target.kr];
+            let allMeanings = list.map(item => item.kr).filter(m => m !== target.kr);
+            allMeanings.sort(() => 0.5 - Math.random());
+            options.push(...allMeanings.slice(0, 3));
+            options.sort(() => 0.5 - Math.random());
+
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full py-2.5 px-4 bg-white/10 hover:bg-indigo-600/60 text-white rounded-xl text-xs font-semibold text-left border border-white/10 transition active:scale-95 flex items-center justify-between';
+                btn.innerHTML = `<span>${opt}</span><i class="fa-solid fa-chevron-right text-[10px] text-gray-400"></i>`;
+                btn.onclick = () => checkQuizAnswer(opt, target.kr);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selected, correct) {
+            if (selected === correct) {
+                playSFX('correct');
+                state.quizScore += 100;
+                addPoints(50);
+            } else {
+                playSFX('wrong');
+            }
+            state.quizTargetIndex++;
+            if (state.quizTargetIndex >= 10 && state.focusModeActive) {
+                state.focusModeActive = false;
+                addPoints(300); // Completion Bonus
+            }
+            loadQuizQuestion();
+        }
+
+        function addPoints(pts) {
+            state.points += pts;
+            document.getElementById('user-points').innerText = `${state.points.toLocaleString()} P`;
+            document.getElementById('shop-points').innerText = state.points.toLocaleString();
+        }
+
+        // Mini Games Router
+        let gameLoopInterval = null;
+
+        function startMiniGame(type) {
+            playSFX('click');
+            document.getElementById('games-menu').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            const viewport = document.getElementById('game-viewport');
+            viewport.innerHTML = '';
+
+            if (type === 'catch') initWordCatchGame(viewport);
+            if (type === 'card') initCardMatchGame(viewport);
+            if (type === 'mole') initMoleWhackGame(viewport);
+            if (type === 'shooter') initSpaceShooterGame(viewport);
+        }
+
+        function exitMiniGame() {
+            playSFX('click');
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('games-menu').classList.remove('hidden');
+        }
+
+        // Game 1: Word Catch
+        function initWordCatchGame(container) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 320;
+            container.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            let basketX = 120;
+            let targetWord = { en: "resilient", kr: "회복력 있는" };
+            let fallingItems = [
+                { text: "회복력 있는", correct: true, x: 140, y: 0, speed: 2 },
+                { text: "버리다", correct: false, x: 40, y: -60, speed: 1.8 }
+            ];
+            let score = 0;
+
+            canvas.addEventListener('touchmove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                basketX = e.touches[0].clientX - rect.left - 30;
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                basketX = e.clientX - rect.left - 30;
             });
 
-            // 3. HUD (계기판 & 십자선)
-            drawHUD();
+            gameLoopInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Target Prompt
+                ctx.fillStyle = "#a855f7";
+                ctx.font = "bold 14px Inter";
+                ctx.fillText(`캐치할 뜻: ${targetWord.en}`, 10, 20);
+
+                // Draw Basket
+                ctx.fillStyle = "#ec4899";
+                ctx.fillRect(basketX, 280, 60, 15);
+
+                // Draw Falling Items
+                fallingItems.forEach((item, idx) => {
+                    item.y += item.speed;
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "12px Inter";
+                    ctx.fillText(item.text, item.x, item.y);
+
+                    // Catch Collision
+                    if (item.y >= 270 && item.y <= 290 && item.x >= basketX - 20 && item.x <= basketX + 60) {
+                        if (item.correct) {
+                            playSFX('correct');
+                            score += 100;
+                            addPoints(20);
+                        } else {
+                            playSFX('wrong');
+                        }
+                        item.y = -40;
+                        item.x = Math.random() * 200 + 20;
+                    }
+
+                    if (item.y > 320) {
+                        item.y = -40;
+                        item.x = Math.random() * 200 + 20;
+                    }
+                });
+
+                document.getElementById('game-score').innerText = `점수: ${score}`;
+            }, 1000 / 60);
         }
 
-        // 계기판 및 UI 그리기
-        function drawHUD() {
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+        // Game 2: 3D Memory Card Match
+        function initCardMatchGame(container) {
+            container.innerHTML = `
+                <div id="card-grid" class="grid grid-cols-3 gap-2 p-2 w-full max-w-[280px]"></div>
+            `;
+            const grid = document.getElementById('card-grid');
+            const pairs = [
+                { en: "eager", kr: "열심인" },
+                { en: "benefit", kr: "혜택" },
+                { en: "delight", kr: "기쁨" }
+            ];
+            let cards = [];
+            pairs.forEach(p => {
+                cards.push({ text: p.en, matchId: p.en });
+                cards.push({ text: p.kr, matchId: p.en });
+            });
+            cards.sort(() => 0.5 - Math.random());
 
-            ctx.save();
+            let selected = [];
+            let matchedCount = 0;
 
-            // 조준점 (Crosshair)
-            ctx.strokeStyle = '#00ffcc';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 15, 0, Math.PI * 2);
-            ctx.moveTo(cx - 25, cy); ctx.lineTo(cx - 10, cy);
-            ctx.moveTo(cx + 10, cy); ctx.lineTo(cx + 25, cy);
-            ctx.moveTo(cx, cy - 25); ctx.lineTo(cx, cy - 10);
-            ctx.moveTo(cx, cy + 10); ctx.lineTo(cx, cy + 25);
-            ctx.stroke();
+            cards.forEach((c, idx) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'h-16 glass-panel rounded-xl flex items-center justify-center text-xs font-bold text-white cursor-pointer border border-white/20 active:scale-95';
+                cardEl.innerText = '?';
+                cardEl.onclick = () => {
+                    if (selected.length < 2 && !selected.includes(idx)) {
+                        playSFX('click');
+                        cardEl.innerText = c.text;
+                        cardEl.classList.add('bg-pink-600/80');
+                        selected.push({ idx, cardEl, matchId: c.matchId });
 
-            // 속도계 (좌측 바)
-            ctx.fillStyle = 'rgba(0, 255, 204, 0.2)';
-            ctx.fillRect(40, cy - 100, 20, 200);
-            ctx.fillStyle = '#00ffcc';
-            const speedHeight = (plane.speed / plane.maxSpeed) * 200;
-            ctx.fillRect(40, cy + 100 - speedHeight, 20, speedHeight);
-            ctx.fillText(`SPD: ${Math.round(plane.speed)}`, 40, cy + 120);
+                        if (selected.length === 2) {
+                            if (selected[0].matchId === selected[1].matchId) {
+                                playSFX('correct');
+                                addPoints(30);
+                                matchedCount++;
+                                selected = [];
+                                if (matchedCount === 3) addPoints(100);
+                            } else {
+                                playSFX('wrong');
+                                setTimeout(() => {
+                                    selected[0].cardEl.innerText = '?';
+                                    selected[1].cardEl.innerText = '?';
+                                    selected[0].cardEl.classList.remove('bg-pink-600/80');
+                                    selected[1].cardEl.classList.remove('bg-pink-600/80');
+                                    selected = [];
+                                }, 800);
+                            }
+                        }
+                    }
+                };
+                grid.appendChild(cardEl);
+            });
+        }
 
-            // 고도계 (우측 바)
-            ctx.fillStyle = 'rgba(0, 255, 204, 0.2)';
-            ctx.fillRect(canvas.width - 60, cy - 100, 20, 200);
-            ctx.fillStyle = '#00ffcc';
-            const altHeight = Math.min(200, (plane.y / 300) * 200);
-            ctx.fillRect(canvas.width - 60, cy + 100 - altHeight, 20, altHeight);
-            ctx.fillText(`ALT: ${Math.round(plane.y)}`, canvas.width - 80, cy + 120);
+        // Game 3: Mole Whack
+        function initMoleWhackGame(container) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center w-full p-2">
+                    <div class="text-xs text-amber-300 font-bold mb-2">정답 [abandon = 버리다] 두더지 터치!</div>
+                    <div id="mole-grid" class="grid grid-cols-3 gap-3 w-full max-w-[260px]"></div>
+                </div>
+            `;
+            const grid = document.getElementById('mole-grid');
+            for (let i = 0; i < 9; i++) {
+                const mole = document.createElement('button');
+                mole.className = 'h-16 rounded-2xl bg-amber-900/60 border border-amber-500/30 flex items-center justify-center text-[10px] font-bold text-white relative overflow-hidden';
+                mole.id = `mole-${i}`;
+                grid.appendChild(mole);
+            }
 
-            // 수평 피치 라더 (Pitch Ladder)
-            ctx.translate(cx, cy);
-            ctx.rotate(-plane.roll);
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.5)';
-            ctx.lineWidth = 1;
-            for (let i = -4; i <= 4; i++) {
-                if (i === 0) continue;
-                const offset = i * 30 + (plane.pitch * 300);
+            let score = 0;
+            gameLoopInterval = setInterval(() => {
+                for (let i = 0; i < 9; i++) {
+                    const btn = document.getElementById(`mole-${i}`);
+                    btn.innerText = '';
+                    btn.onclick = null;
+                }
+                const randomMoleIdx = Math.floor(Math.random() * 9);
+                const isCorrectMole = Math.random() > 0.4;
+                const activeBtn = document.getElementById(`mole-${randomMoleIdx}`);
+                activeBtn.innerText = isCorrectMole ? "버리다" : "기쁨";
+                activeBtn.classList.add('bg-amber-600');
+
+                activeBtn.onclick = () => {
+                    if (isCorrectMole) {
+                        playSFX('correct');
+                        score += 100;
+                        addPoints(20);
+                    } else {
+                        playSFX('wrong');
+                    }
+                    document.getElementById('game-score').innerText = `점수: ${score}`;
+                };
+            }, 1000);
+        }
+
+        // Game 4: Space Shooter
+        function initSpaceShooterGame(container) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 320;
+            container.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+
+            let shipX = 135;
+            let bullets = [];
+            let asteroids = [
+                { x: 50, y: 20, text: "혜택", correct: true },
+                { x: 180, y: 40, text: "비난", correct: false }
+            ];
+            let score = 0;
+
+            canvas.onclick = () => {
+                playSFX('click');
+                bullets.push({ x: shipX + 12, y: 280 });
+            };
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                shipX = e.clientX - rect.left - 15;
+            });
+
+            gameLoopInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Target
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "bold 12px Inter";
+                ctx.fillText("격추 Target: benefit", 10, 20);
+
+                // Draw Spaceship
+                ctx.fillStyle = "#0284c7";
                 ctx.beginPath();
-                ctx.moveTo(-30, offset);
-                ctx.lineTo(30, offset);
-                ctx.stroke();
-                ctx.fillText(`${i * 10}°`, 35, offset + 4);
+                ctx.moveTo(shipX + 15, 280);
+                ctx.lineTo(shipX, 305);
+                ctx.lineTo(shipX + 30, 305);
+                ctx.fill();
+
+                // Bullets
+                bullets.forEach((b, bIdx) => {
+                    b.y -= 5;
+                    ctx.fillStyle = "#f43f5e";
+                    ctx.fillRect(b.x, b.y, 4, 8);
+
+                    // Check hit
+                    asteroids.forEach(ast => {
+                        if (Math.abs(b.x - ast.x) < 25 && Math.abs(b.y - ast.y) < 20) {
+                            if (ast.correct) {
+                                playSFX('correct');
+                                score += 100;
+                                addPoints(25);
+                            } else {
+                                playSFX('wrong');
+                            }
+                            b.y = -100;
+                            ast.y = 20;
+                            ast.x = Math.random() * 200 + 20;
+                        }
+                    });
+                });
+
+                // Asteroids
+                asteroids.forEach(ast => {
+                    ctx.fillStyle = "#cbd5e1";
+                    ctx.beginPath();
+                    ctx.arc(ast.x, ast.y, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = "#0f172a";
+                    ctx.font = "10px Inter";
+                    ctx.fillText(ast.text, ast.x - 10, ast.y + 3);
+                });
+
+                document.getElementById('game-score').innerText = `점수: ${score}`;
+            }, 1000 / 60);
+        }
+
+        let synthOsc = null;
+        let synthGain = null;
+
+        function toggleMusicPlay() {
+            initAudioContext();
+            state.musicPlaying = !state.musicPlaying;
+            const btn = document.getElementById('music-play-btn');
+            const eq = document.getElementById('island-eq');
+
+            if (state.musicPlaying) {
+                btn.innerHTML = `<i class="fa-solid fa-pause"></i>`;
+                eq.classList.remove('hidden');
+                startSynthesizedMusic();
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-play"></i>`;
+                eq.classList.add('hidden');
+                stopSynthesizedMusic();
+            }
+        }
+
+        function startSynthesizedMusic() {
+            if (!audioCtx) return;
+            stopSynthesizedMusic();
+
+            synthOsc = audioCtx.createOscillator();
+            synthGain = audioCtx.createGain();
+            synthOsc.connect(synthGain);
+            synthGain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            synthGain.gain.setValueAtTime(state.masterVolume * 0.15, now);
+
+            if (state.musicGenre === 'ballad') {
+                synthOsc.type = 'sine';
+                synthOsc.frequency.setValueAtTime(261.63, now); // C4
+                synthOsc.frequency.setValueAtTime(329.63, now + 0.5); // E4
+                synthOsc.frequency.setValueAtTime(392.00, now + 1.0); // G4
+            } else if (state.musicGenre === 'rock') {
+                synthOsc.type = 'sawtooth';
+                synthOsc.frequency.setValueAtTime(110.00, now); // A2
+                synthOsc.frequency.setValueAtTime(146.83, now + 0.3); // D3
+            } else {
+                synthOsc.type = 'triangle';
+                synthOsc.frequency.setValueAtTime(220.00, now);
             }
 
-            ctx.restore();
+            synthOsc.start(now);
         }
 
-        // 게임 리셋
-        function resetGame() {
-            plane.x = 0;
-            plane.y = 100;
-            plane.z = 0;
-            plane.pitch = 0;
-            plane.roll = 0;
-            plane.yaw = 0;
-            plane.speed = 40;
-            plane.throttle = 40;
-            score = 0;
-            ringsPassed = 0;
-            isGameOver = false;
-
-            document.getElementById('score').innerText = '0';
-            document.getElementById('rings').innerText = '0';
-            document.getElementById('game-over').style.display = 'none';
-
-            // 링 위치 초기화
-            rings.length = 0;
-            for (let i = 1; i <= 8; i++) {
-                createRing(i * 400);
+        function stopSynthesizedMusic() {
+            if (synthOsc) {
+                try { synthOsc.stop(); } catch (e) {}
+                synthOsc = null;
             }
         }
 
-        // 메인 게임 루프
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
+        function changeGenre(genre) {
+            playSFX('click');
+            state.musicGenre = genre;
+            document.querySelectorAll('.genre-btn').forEach(b => b.className = "genre-btn py-1.5 bg-white/10 text-gray-300 rounded-lg text-[10px] font-bold");
+            document.getElementById(`genre-${genre}`).className = "genre-btn py-1.5 bg-amber-600 text-white rounded-lg text-[10px] font-bold";
+            
+            const titles = { ballad: "감성 발라드 피아노", rock: "에너제틱 모던 락", hiphop: "로파이 힙합 비트", rnb: "네오소울 R&B", lofi: "칠아웃 Lo-Fi 멜로디" };
+            document.getElementById('music-title').innerText = titles[genre];
+            document.getElementById('music-genre').innerText = `장르: ${genre.toUpperCase()} (Synthesized)`;
+
+            if (state.musicPlaying) startSynthesizedMusic();
         }
 
-        loop();
+        function renderShop() {
+            const container = document.getElementById('shop-items-list');
+            container.innerHTML = '';
+            shopItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'glass-panel p-2.5 rounded-xl border border-white/10 flex items-center justify-between';
+                el.innerHTML = `
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                            <i class="fa-solid ${item.icon}"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-white">${item.name}</div>
+                            <div class="text-[10px] text-amber-300 font-semibold">${item.price} P</div>
+                        </div>
+                    </div>
+                    <button onclick="buyEquipItem('${item.id}', '${item.type}', ${item.price})" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow">착용</button>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function buyEquipItem(id, type, price) {
+            playSFX('correct');
+            if (type === 'headwear') {
+                state.equippedHeadwear = id;
+                const iconMap = { crown: 'fa-crown', cat: 'fa-cat', grad: 'fa-graduation-cap' };
+                document.getElementById('equip-headwear').innerHTML = `<i class="fa-solid ${iconMap[id]}"></i>`;
+            } else {
+                state.equippedEyewear = id;
+                document.getElementById('equip-eyewear').innerHTML = `<i class="fa-solid fa-glasses"></i>`;
+            }
+        }
+
+        function addCustomWord() {
+            const enInput = document.getElementById('input-en-word');
+            const krInput = document.getElementById('input-kr-meaning');
+            if (enInput.value.trim() && krInput.value.trim()) {
+                playSFX('correct');
+                state.customWords.push({ en: enInput.value.trim(), kr: krInput.value.trim() });
+                enInput.value = '';
+                krInput.value = '';
+                renderCustomVocabList();
+            }
+        }
+
+        function renderCustomVocabList() {
+            const container = document.getElementById('custom-word-list');
+            container.innerHTML = '';
+            document.getElementById('custom-word-count').innerText = `${state.customWords.length}개`;
+            state.customWords.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = 'glass-panel p-2.5 rounded-xl border border-white/10 flex items-center justify-between text-xs';
+                el.innerHTML = `
+                    <div>
+                        <span class="font-bold text-sky-300">${item.en}</span>
+                        <span class="text-gray-300 ml-2">${item.kr}</span>
+                    </div>
+                    <button onclick="speakWord('${item.en}')" class="text-sky-400 hover:text-sky-300"><i class="fa-solid fa-volume-high"></i></button>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function togglePinSecurity(enabled) {
+            playSFX('click');
+            state.pinEnabled = enabled;
+        }
+
+        function adjustBrightness(val) {
+            document.getElementById('brightness-overlay').style.opacity = val / 100;
+            document.getElementById('brightness-val-text').innerText = `${100 - val}%`;
+        }
+
+        function setWallpaper(wallpaperClass) {
+            playSFX('click');
+            const phone = document.getElementById('phone-screen');
+            phone.className = `phone-screen relative ${wallpaperClass}`;
+        }
+
+        // Live Clock Updates
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+            document.getElementById('status-clock').innerText = timeStr;
+            document.getElementById('lock-clock').innerText = timeStr;
+        }, 1000);
     </script>
 </body>
 </html>
